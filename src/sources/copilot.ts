@@ -45,22 +45,28 @@ function parseJson(line: string): unknown {
 export function copilotPrompts(lines: readonly string[], file: PromptFile): Prompt[] {
   const prompts: Prompt[] = [];
   for (const line of lines) {
-    const parsed = line.includes('"user.message"')
-      ? messageSchema.safeParse(parseJson(line))
-      : null;
-    const record = parsed?.success === true ? parsed.data : null;
-    const text = record === null ? null : typedText(record.data.content);
-    if (record !== null && text !== null && !text.startsWith('/') && !text.startsWith('!')) {
-      const at = Date.parse(record.timestamp);
-      prompts.push({
-        id: `${COPILOT_PREFIX}${record.id}`,
-        sessionId: file.sessionId ?? '',
-        at: Number.isNaN(at) ? (file.stamp?.mtimeMs ?? 0) : at,
-        text,
-      });
+    const prompt = copilotPrompt(line, file);
+    if (prompt !== null) {
+      prompts.push(prompt);
     }
   }
   return prompts;
+}
+
+function copilotPrompt(line: string, file: PromptFile): Prompt | null {
+  const parsed = line.includes('"user.message"') ? messageSchema.safeParse(parseJson(line)) : null;
+  const record = parsed?.success === true ? parsed.data : null;
+  const text = record === null ? null : typedText(record.data.content);
+  if (record === null || text === null || text.startsWith('/') || text.startsWith('!')) {
+    return null;
+  }
+  const at = Date.parse(record.timestamp);
+  return {
+    id: `${COPILOT_PREFIX}${record.id}`,
+    sessionId: file.sessionId ?? '',
+    at: Number.isNaN(at) ? (file.stamp?.mtimeMs ?? 0) : at,
+    text,
+  };
 }
 
 const NAME_LINE = /^name:[ \t]*(.*)$/mu;
@@ -73,9 +79,15 @@ export function copilotTitle(yaml: string | null): string | null {
 }
 
 async function read(file: PromptFile): Promise<PromptFileRead> {
-  const lines = await readAllLines(file.path);
+  const prompts: Prompt[] = [];
+  for await (const line of readAllLines(file.path)) {
+    const prompt = copilotPrompt(line, file);
+    if (prompt !== null) {
+      prompts.push(prompt);
+    }
+  }
   const yaml = await readOptional(path.join(path.dirname(file.path), WORKSPACE_FILE));
-  return { prompts: copilotPrompts(lines, file), title: copilotTitle(yaml) };
+  return { prompts, title: copilotTitle(yaml) };
 }
 
 export function copilotUserPrompts(homeDir: string): UserPrompts {

@@ -6,7 +6,8 @@
 import path from 'node:path';
 
 import { readAllLines } from '../files.js';
-import { historyPrompts, transcriptPrompts } from '../reputation/prompts.js';
+import { historyPrompt, promptFrom } from '../reputation/prompts.js';
+import type { Prompt } from '../reputation/prompts.js';
 
 import { listDir, stampOf } from './listing.js';
 import type { PromptFile, PromptFileRead, UserPrompts } from './types.js';
@@ -76,15 +77,35 @@ export function claudeTitle(lines: readonly string[]): string | null {
 }
 
 async function read(file: PromptFile): Promise<PromptFileRead> {
-  const lines = await readAllLines(file.path);
-  if (file.kind === 'history' || file.sessionId === null) {
-    return { prompts: historyPrompts(lines), title: null };
+  const prompts: Prompt[] = [];
+  const titleLines: string[] = [];
+  for await (const line of readAllLines(file.path)) {
+    if (file.kind === 'history' || file.sessionId === null) {
+      const prompt = historyPrompt(line);
+      if (prompt !== null) {
+        prompts.push(prompt);
+      }
+    } else {
+      const prompt = promptFrom(line, {
+        sessionId: file.sessionId,
+        fallbackAt: file.stamp?.mtimeMs ?? 0,
+      });
+      if (prompt !== null) {
+        prompts.push(prompt);
+      }
+      if (
+        line.includes('"custom-title"') ||
+        line.includes('"ai-title"') ||
+        line.includes('"last-prompt"')
+      ) {
+        titleLines.push(line);
+      }
+    }
   }
-  const prompts = transcriptPrompts(lines, {
-    sessionId: file.sessionId,
-    fallbackAt: file.stamp?.mtimeMs ?? 0,
-  });
-  return { prompts, title: claudeTitle(lines) };
+  return {
+    prompts,
+    title: file.kind === 'history' || file.sessionId === null ? null : claudeTitle(titleLines),
+  };
 }
 
 export function claudeUserPrompts(configDir: string): UserPrompts {

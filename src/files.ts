@@ -2,7 +2,9 @@
 // ever leaving half of it behind, and split a JSONL file into lines.
 
 import { randomUUID } from 'node:crypto';
+import { createReadStream } from 'node:fs';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { StringDecoder } from 'node:string_decoder';
 import path from 'node:path';
 
 function isNotFound(error: unknown): boolean {
@@ -52,10 +54,19 @@ export async function writeFileAtomic(target: string, content: string): Promise<
   }
 }
 
-/** Every complete line of a file. A last line still being written is left out. */
-export async function readAllLines(file: string): Promise<string[]> {
-  const text = await readFile(file, 'utf8');
-  const lines = text.split('\n');
-  lines.pop();
-  return lines;
+/** Streams complete lines of a file, leaving out a last line still being written. */
+export async function* readAllLines(file: string): AsyncGenerator<string> {
+  const decoder = new StringDecoder('utf8');
+  let pending = '';
+  for await (const chunk of createReadStream(file)) {
+    const text = pending + decoder.write(chunk);
+    let start = 0;
+    let end = text.indexOf('\n', start);
+    while (end !== -1) {
+      yield text.slice(start, end);
+      start = end + 1;
+      end = text.indexOf('\n', start);
+    }
+    pending = text.slice(start);
+  }
 }

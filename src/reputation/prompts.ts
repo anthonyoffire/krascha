@@ -155,7 +155,10 @@ export interface TranscriptSource {
   readonly fallbackAt: number;
 }
 
-function promptFrom(line: string, source: TranscriptSource): Prompt | null {
+export function promptFrom(line: string, source: TranscriptSource): Prompt | null {
+  if (!worthParsing(line)) {
+    return null;
+  }
   const parsed = recordSchema.safeParse(parseJson(line));
   if (!parsed.success) {
     return null;
@@ -181,7 +184,7 @@ function promptFrom(line: string, source: TranscriptSource): Prompt | null {
 export function transcriptPrompts(lines: readonly string[], source: TranscriptSource): Prompt[] {
   const prompts: Prompt[] = [];
   for (const line of lines) {
-    const prompt = worthParsing(line) ? promptFrom(line, source) : null;
+    const prompt = promptFrom(line, source);
     if (prompt !== null) {
       prompts.push(prompt);
     }
@@ -199,17 +202,25 @@ const PASTED = /\[Pasted text #[^\]]*\]/gu;
 export function historyPrompts(lines: readonly string[]): Prompt[] {
   const prompts: Prompt[] = [];
   for (const line of lines) {
-    const parsed = historySchema.safeParse(parseJson(line));
-    const entry = parsed.success ? parsed.data : null;
-    const text = entry?.display.replaceAll(PASTED, ' ').trim() ?? '';
-    if (entry !== null && text !== '' && !text.startsWith('/') && !text.startsWith('!')) {
-      prompts.push({
-        id: `${HISTORY_PREFIX}${shortHash(entry.sessionId, String(entry.timestamp), entry.display)}`,
-        sessionId: entry.sessionId,
-        at: entry.timestamp,
-        text,
-      });
+    const prompt = historyPrompt(line);
+    if (prompt !== null) {
+      prompts.push(prompt);
     }
   }
   return prompts;
+}
+
+export function historyPrompt(line: string): Prompt | null {
+  const parsed = historySchema.safeParse(parseJson(line));
+  const entry = parsed.success ? parsed.data : null;
+  const text = entry?.display.replaceAll(PASTED, ' ').trim() ?? '';
+  if (entry === null || text === '' || text.startsWith('/') || text.startsWith('!')) {
+    return null;
+  }
+  return {
+    id: `${HISTORY_PREFIX}${shortHash(entry.sessionId, String(entry.timestamp), entry.display)}`,
+    sessionId: entry.sessionId,
+    at: entry.timestamp,
+    text,
+  };
 }
