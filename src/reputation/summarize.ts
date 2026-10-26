@@ -200,5 +200,6 @@ export function summarize(
       0,
     ),
     sorryAt,
+    roleplay: index.roleplay ? 1 : 0,
   };
 }

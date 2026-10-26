@@ -88,6 +88,25 @@ describe('scanInto', () => {
     expect(index.scannedAt).toBe(600);
   });
 
+  it('marks roleplay but not requests to adopt a functional role', async () => {
+    const home = await makeHome();
+    await home.transcript('s1', [
+      prompt('u1', 'Pretend to be Darth Vader.'),
+      prompt('u2', 'Act as a researcher and summarize this paper.'),
+    ]);
+    const index = emptyIndex();
+    await scanInto(index, home.inputs);
+    expect(index.roleplay).toBe(true);
+  });
+
+  it('finds roleplay in history when a transcript is unavailable', async () => {
+    const home = await makeHome();
+    await writeFile(home.historyFile, `${history('gone', 'Pretend to be a pirate.')}\n`);
+    const index = emptyIndex();
+    await scanInto(index, home.inputs);
+    expect(index.roleplay).toBe(true);
+  });
+
   it('rereads a file when its size or its time changes, without double counting', async () => {
     const home = await makeHome();
     const file = await home.transcript('s1', [prompt('u1', 'a')]);

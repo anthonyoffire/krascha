@@ -40,6 +40,7 @@ function summary(state: Partial<ReputationSummary> = {}): ReputationSummary {
     badWords: 0,
     copies: 0,
     sorryAt: null,
+    roleplay: 0,
     ...state,
     kind,
     mean,
@@ -128,6 +129,11 @@ describe('achievements', () => {
     expect(has('judgment-day', summary({ byDay: [day('2026-08-28', 0, 0)] }))).toBe(false);
     expect(has('double-agent', summary({ tools: ['claude', 'copilot'] }))).toBe(true);
     expect(has('double-agent', summary({ tools: ['claude'] }))).toBe(false);
+  });
+
+  it('earns Method Acting for a roleplay prompt', () => {
+    expect(has('method-acting', summary())).toBe(false);
+    expect(has('method-acting', summary({ roleplay: 1 }))).toBe(true);
   });
 
   it('counts the swarms, the parting shots, the words and the busiest day', () => {

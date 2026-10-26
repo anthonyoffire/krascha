@@ -93,4 +93,6 @@ export interface ReputationSummary extends ReputationTally {
   readonly copies: number;
   /** When the newest prompt that says sorry was typed, or null when none did. */
   readonly sorryAt: number | null;
+  /** Whether a prompt asked an agent to embody a distinct persona. */
+  readonly roleplay: number;
 }

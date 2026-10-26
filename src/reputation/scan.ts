@@ -7,6 +7,7 @@ import type { PromptFile, UserPrompts } from '../sources/types.js';
 
 import type { FileStamp, ReputationIndex } from './store.js';
 import { addHistoryPrompt, addPrompt, claimSession, setTokens } from './store.js';
+import { detectRoleplay } from './roleplay.js';
 
 export interface ScanInputs {
   /** Every agent's prompt files, from the observers that keep them. */
@@ -39,7 +40,11 @@ async function readTranscript(index: ReputationIndex, item: Listed): Promise<num
       setTokens(index, item.file.sessionId, tokensByDay);
     }
   }
-  return prompts.filter((prompt) => addPrompt(index, prompt)).length;
+  const added = prompts.filter((prompt) => addPrompt(index, prompt)).length;
+  if (prompts.some((prompt) => detectRoleplay(prompt.text))) {
+    index.roleplay = true;
+  }
+  return added;
 }
 
 async function readHistory(index: ReputationIndex, item: Listed): Promise<number | null> {
@@ -49,7 +54,14 @@ async function readHistory(index: ReputationIndex, item: Listed): Promise<number
   }
   const { prompts } = await item.source.read(item.file);
   index.files.set(item.file.path, stamp);
-  return prompts.filter((prompt) => addHistoryPrompt(index, prompt)).length;
+  return prompts.filter((prompt) => {
+    const accepted = index.sessions.get(prompt.sessionId)?.source !== 'transcript';
+    const added = addHistoryPrompt(index, prompt);
+    if (accepted && detectRoleplay(prompt.text)) {
+      index.roleplay = true;
+    }
+    return added;
+  }).length;
 }
 
 /** Merges new prompts into `index` in place. Running it twice on the same files adds nothing. */

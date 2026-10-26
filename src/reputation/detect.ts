@@ -179,7 +179,7 @@ export function unleet(word: string): string {
 }
 
 /** Bump when the matching changes but the word lists do not, so every prompt is counted again. */
-const MATCH_RULES = 1;
+const MATCH_RULES = 2;
 
 /** Changes whenever the words or the matching change. The index saves it to know when to count again. */
 export const DETECTION_STAMP = createHash('sha256')

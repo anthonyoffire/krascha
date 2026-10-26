@@ -489,6 +489,15 @@ export const ACHIEVEMENTS: readonly AchievementRule[] = [
     fromCounts: true,
   },
   {
+    id: 'method-acting',
+    name: 'Method Acting',
+    icon: '🎭',
+    tier: 'bronze',
+    how: 'Ask the AI to roleplay as a distinct character or persona, not a job or professional role.',
+    quip: 'The agent put on a new face. Krascha took note of yours.',
+    ...reach(1, (state) => state.roleplay),
+  },
+  {
     id: 'legion',
     name: 'Legion',
     icon: '🦾',
@@ -1023,5 +1032,6 @@ function totalsOf(machines: readonly MachineCounts[]): ReputationSummary {
     badWords: 0,
     copies: 0,
     sorryAt: null,
+    roleplay: 0,
   };
 }

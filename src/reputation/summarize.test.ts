@@ -94,7 +94,14 @@ describe('summarize', () => {
       badWords: 0,
       copies: 0,
       sorryAt: null,
+      roleplay: 0,
     });
+  });
+
+  it('reports the one-time roleplay flag', () => {
+    const index = emptyIndex();
+    index.roleplay = true;
+    expect(summarize(index, title, NO_TOKENS).roleplay).toBe(1);
   });
 
   it('counts prompts typed late at night, at 2:14 a.m. and both kind and mean', () => {

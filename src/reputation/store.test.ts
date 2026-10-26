@@ -65,6 +65,17 @@ describe('index file', () => {
     });
   });
 
+  it('persists the roleplay flag without saving prompt text', async () => {
+    const file = await indexFile();
+    const index = emptyIndex();
+    index.roleplay = true;
+    addPrompt(index, prompt('t:roleplay', 'Act as Batman.'));
+    await saveIndex(file, index);
+    const saved = await readFile(file, 'utf8');
+    expect(saved).not.toContain('Batman');
+    expect((await loadIndex(file, 1)).index.roleplay).toBe(true);
+  });
+
   it('keeps the counts from a Frustration index and reads every file again', async () => {
     const file = await indexFile();
     const old = filled();
@@ -275,6 +286,14 @@ describe('mergeIndex', () => {
     setTokens(into, 's1', { '2026-10-22': 5 });
     mergeIndex(into, filled());
     expect(into.tokens.get('s1')).toStrictEqual({ '2026-10-22': 5 });
+  });
+
+  it('keeps the roleplay achievement when merging indexes', () => {
+    const into = emptyIndex();
+    const from = emptyIndex();
+    from.roleplay = true;
+    mergeIndex(into, from);
+    expect(into.roleplay).toBe(true);
   });
 
   it('never counts a session from both its transcript and its history', () => {

@@ -49,6 +49,7 @@ export interface ReputationIndex {
   readonly files: Map<string, FileStamp>;
   readonly sessions: Map<string, SessionEntry>;
   readonly prompts: Map<string, PromptEntry>;
+  roleplay: boolean;
   readonly hits: Map<string, HitEntry>;
   /** Prompts with manners or praise in them, by prompt id. */
   readonly kind: Map<string, Kindness>;
@@ -96,6 +97,7 @@ const fileSchema = z.object({
   ),
   // Indexes from before kind and mean prompts were hashed do not have it.
   prints: z.literal(true).optional(),
+  roleplay: z.boolean().default(false),
   hits: hitsSchema,
   kind: z
     .record(z.string(), z.object({ terms: z.array(z.string()), excerpt: z.string() }))
@@ -109,6 +111,7 @@ export function emptyIndex(): ReputationIndex {
     files: new Map(),
     sessions: new Map(),
     prompts: new Map(),
+    roleplay: false,
     hits: new Map(),
     kind: new Map(),
     tokens: new Map(),
@@ -142,6 +145,7 @@ function parseIndex(text: string): ReputationIndex | null {
     ),
     sessions: new Map(Object.entries(data.sessions)),
     prompts: new Map(Object.entries(data.prompts)),
+    roleplay: data.roleplay,
     hits: new Map(Object.entries(data.hits)),
     kind: new Map(Object.entries(data.kind)),
     tokens: new Map(Object.entries(data.tokens ?? {})),
@@ -179,6 +183,7 @@ export async function saveIndex(file: string, index: ReputationIndex): Promise<v
     files: Object.fromEntries(index.files),
     sessions: Object.fromEntries(index.sessions),
     prompts: Object.fromEntries(index.prompts),
+    roleplay: index.roleplay,
     hits: Object.fromEntries(
       [...index.hits].map(([id, hit]) => [id, { ...hit, terms: [...hit.terms] }]),
     ),
@@ -318,5 +323,6 @@ export function mergeIndex(into: ReputationIndex, from: ReputationIndex): number
     }
     added += 1;
   }
+  into.roleplay ||= from.roleplay;
   return added;
 }
